@@ -6,9 +6,12 @@ import CustomerDetail from './components/customers/CustomerDetail';
 import WeeklyFocus from './components/tasks/WeeklyFocus';
 import ChatAssistant from './components/assistant/ChatAssistant';
 import DataHub from './components/data/DataHub';
+import ApiKeyModal from './components/shared/ApiKeyModal';
+import { initializeGemini } from './services/geminiService';
 import { type CustomerSummary, type InvoiceSummary, type AgeSummary, Page, type EnrichedCustomerData } from './types';
 
 const App: React.FC = () => {
+  const [apiKey, setApiKey] = useState<string>('');
   const [customerSummaries, setCustomerSummaries] = useState<CustomerSummary[]>([]);
   const [invoiceSummaries, setInvoiceSummaries] = useState<InvoiceSummary[]>([]);
   const [ageSummaries, setAgeSummaries] = useState<AgeSummary[]>([]);
@@ -16,6 +19,11 @@ const App: React.FC = () => {
 
   const [currentPage, setCurrentPage] = useState<Page>(Page.DATA_HUB);
   const [selectedCustomerName, setSelectedCustomerName] = useState<string | null>(null);
+
+  const handleApiKeySubmit = (key: string) => {
+    initializeGemini(key);
+    setApiKey(key);
+  };
 
   const handleDataUpload = (data: { customerSummaries: CustomerSummary[]; invoiceSummaries: InvoiceSummary[]; ageSummaries: AgeSummary[] }) => {
     setCustomerSummaries(data.customerSummaries);
@@ -60,6 +68,10 @@ const App: React.FC = () => {
         return isDataLoaded ? <Dashboard customerSummaries={customerSummaries} ageSummaries={ageSummaries} onSelectCustomer={handleSelectCustomer} /> : <DataHub onDataUpload={handleDataUpload} />;
     }
   };
+
+  if (!apiKey) {
+    return <ApiKeyModal onSubmit={handleApiKeySubmit} />;
+  }
 
   return (
     <div className="flex h-screen bg-gray-900 text-gray-200 font-sans">

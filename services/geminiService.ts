@@ -1,15 +1,22 @@
 import { GoogleGenAI } from "@google/genai";
 import { type CustomerSummary, type InvoiceSummary, type AgeSummary, type EnrichedCustomerData, type ChatMessage } from '../types';
 
-const API_KEY = process.env.API_KEY;
+let ai: GoogleGenAI | null = null;
 
-if (!API_KEY) {
-  throw new Error("API_KEY environment variable not set");
-}
+export const initializeGemini = (apiKey: string) => {
+  if (!apiKey) {
+    console.error("API Key is missing for Gemini initialization.");
+    ai = null;
+    return;
+  }
+  ai = new GoogleGenAI({ apiKey });
+};
 
-const ai = new GoogleGenAI({ apiKey: API_KEY });
 
 const generateContent = async (prompt: string) => {
+  if (!ai) {
+    return "Error: Gemini AI not initialized. Please enter your API Key in the application.";
+  }
   try {
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -18,6 +25,9 @@ const generateContent = async (prompt: string) => {
     return response.text;
   } catch (error) {
     console.error("Error calling Gemini API:", error);
+    if (error instanceof Error && error.message.includes('API key not valid')) {
+        return "Authentication Error: The provided API key is not valid. Please check your key and refresh the page.";
+    }
     return "Sorry, I encountered an error while processing your request.";
   }
 };
