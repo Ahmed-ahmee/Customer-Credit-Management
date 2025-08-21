@@ -6,59 +6,58 @@ import CustomerDetail from './components/customers/CustomerDetail';
 import WeeklyFocus from './components/tasks/WeeklyFocus';
 import ChatAssistant from './components/assistant/ChatAssistant';
 import DataHub from './components/data/DataHub';
-import { type Customer, type Invoice, type Payment, Page } from './types';
+import { type CustomerSummary, type InvoiceSummary, type AgeSummary, Page, type EnrichedCustomerData } from './types';
 
 const App: React.FC = () => {
-  const [customers, setCustomers] = useState<Customer[]>([]);
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const [payments, setPayments] = useState<Payment[]>([]);
+  const [customerSummaries, setCustomerSummaries] = useState<CustomerSummary[]>([]);
+  const [invoiceSummaries, setInvoiceSummaries] = useState<InvoiceSummary[]>([]);
+  const [ageSummaries, setAgeSummaries] = useState<AgeSummary[]>([]);
   const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   const [currentPage, setCurrentPage] = useState<Page>(Page.DATA_HUB);
-  const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
+  const [selectedCustomerName, setSelectedCustomerName] = useState<string | null>(null);
 
-  const handleDataUpload = (data: { customers: Customer[]; invoices: Invoice[]; payments: Payment[] }) => {
-    setCustomers(data.customers);
-    setInvoices(data.invoices);
-    setPayments(data.payments);
+  const handleDataUpload = (data: { customerSummaries: CustomerSummary[]; invoiceSummaries: InvoiceSummary[]; ageSummaries: AgeSummary[] }) => {
+    setCustomerSummaries(data.customerSummaries);
+    setInvoiceSummaries(data.invoiceSummaries);
+    setAgeSummaries(data.ageSummaries);
     setIsDataLoaded(true);
     setCurrentPage(Page.DASHBOARD);
   };
 
-  const handleSelectCustomer = (customerId: string) => {
-    setSelectedCustomerId(customerId);
+  const handleSelectCustomer = (customerName: string) => {
+    setSelectedCustomerName(customerName);
     setCurrentPage(Page.CUSTOMER_DETAIL);
   };
 
-  const selectedCustomer = useMemo(() => {
-    if (!selectedCustomerId || !isDataLoaded) return null;
-    const customer = customers.find(c => c.id === selectedCustomerId);
-    if (!customer) return null;
+  const selectedCustomerData = useMemo((): EnrichedCustomerData | null => {
+    if (!selectedCustomerName || !isDataLoaded) return null;
+    const summary = customerSummaries.find(c => c.customerName === selectedCustomerName);
+    if (!summary) return null;
 
-    const customerInvoices = invoices.filter(inv => inv.customerId === selectedCustomerId);
-    const invoiceIds = customerInvoices.map(inv => inv.id);
-    const customerPayments = payments.filter(p => invoiceIds.includes(p.invoiceId));
-
-    return { ...customer, invoices: customerInvoices, payments: customerPayments };
-  }, [selectedCustomerId, customers, invoices, payments, isDataLoaded]);
+    return {
+      summary,
+      invoiceSummaries: invoiceSummaries.filter(inv => inv.customerName === selectedCustomerName),
+      ageSummaries: ageSummaries.filter(age => age.customerName === selectedCustomerName),
+    };
+  }, [selectedCustomerName, customerSummaries, invoiceSummaries, ageSummaries, isDataLoaded]);
 
   const renderContent = () => {
     switch (currentPage) {
       case Page.DATA_HUB:
         return <DataHub onDataUpload={handleDataUpload} />;
       case Page.DASHBOARD:
-        return <Dashboard customers={customers} invoices={invoices} onSelectCustomer={handleSelectCustomer} />;
+        return <Dashboard customerSummaries={customerSummaries} ageSummaries={ageSummaries} onSelectCustomer={handleSelectCustomer} />;
       case Page.CUSTOMERS:
-        return <CustomerList customers={customers} invoices={invoices} onSelectCustomer={handleSelectCustomer} />;
+        return <CustomerList customerSummaries={customerSummaries} ageSummaries={ageSummaries} onSelectCustomer={handleSelectCustomer} />;
       case Page.CUSTOMER_DETAIL:
-        return selectedCustomer ? <CustomerDetail customer={selectedCustomer} /> : <CustomerList customers={customers} invoices={invoices} onSelectCustomer={handleSelectCustomer} />;
+        return selectedCustomerData ? <CustomerDetail customerData={selectedCustomerData} /> : <CustomerList customerSummaries={customerSummaries} ageSummaries={ageSummaries} onSelectCustomer={handleSelectCustomer} />;
       case Page.WEEKLY_FOCUS:
-        return <WeeklyFocus customers={customers} invoices={invoices} />;
+        return <WeeklyFocus customerSummaries={customerSummaries} ageSummaries={ageSummaries} />;
       case Page.AI_ASSISTANT:
-        return <ChatAssistant customers={customers} invoices={invoices} />;
+        return <ChatAssistant customerSummaries={customerSummaries} invoiceSummaries={invoiceSummaries} ageSummaries={ageSummaries} />;
       default:
-        // Redirect to Data Hub if data isn't loaded
-        return isDataLoaded ? <Dashboard customers={customers} invoices={invoices} onSelectCustomer={handleSelectCustomer} /> : <DataHub onDataUpload={handleDataUpload} />;
+        return isDataLoaded ? <Dashboard customerSummaries={customerSummaries} ageSummaries={ageSummaries} onSelectCustomer={handleSelectCustomer} /> : <DataHub onDataUpload={handleDataUpload} />;
     }
   };
 

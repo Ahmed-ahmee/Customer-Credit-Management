@@ -1,24 +1,23 @@
-
 import React, { useState } from 'react';
-import { type Customer, type Invoice } from '../../types';
+import { type CustomerSummary, type AgeSummary } from '../../types';
 import { generateWeeklyFocus } from '../../services/geminiService';
 
 interface WeeklyFocusProps {
-  customers: Customer[];
-  invoices: Invoice[];
+  customerSummaries: CustomerSummary[];
+  ageSummaries: AgeSummary[];
 }
 
 const LoadingSpinner = () => (
     <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-blue-500"></div>
 );
 
-const WeeklyFocus: React.FC<WeeklyFocusProps> = ({ customers, invoices }) => {
+const WeeklyFocus: React.FC<WeeklyFocusProps> = ({ customerSummaries, ageSummaries }) => {
   const [report, setReport] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const handleGenerateReport = async () => {
     setIsLoading(true);
-    const result = await generateWeeklyFocus(customers, invoices);
+    const result = await generateWeeklyFocus(customerSummaries, ageSummaries);
     setReport(result);
     setIsLoading(false);
   };

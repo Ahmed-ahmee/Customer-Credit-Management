@@ -1,30 +1,31 @@
-
 import React, { useState, useEffect } from 'react';
-import { type EnrichedCustomer } from '../../types';
+import { type EnrichedCustomerData } from '../../types';
 import { generateCreditSuggestion } from '../../services/geminiService';
 
 interface CreditScoreProps {
-  customer: EnrichedCustomer;
+  customerData: EnrichedCustomerData;
 }
 
 const LoadingSpinner = () => (
     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-400"></div>
 );
 
-const CreditScore: React.FC<CreditScoreProps> = ({ customer }) => {
+const CreditScore: React.FC<CreditScoreProps> = ({ customerData }) => {
   const [suggestion, setSuggestion] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const fetchSuggestion = async () => {
       setIsLoading(true);
-      const result = await generateCreditSuggestion(customer);
+      const result = await generateCreditSuggestion(customerData);
       setSuggestion(result);
       setIsLoading(false);
     };
 
-    fetchSuggestion();
-  }, [customer]);
+    if(customerData) {
+        fetchSuggestion();
+    }
+  }, [customerData]);
 
   const riskLevel = suggestion.match(/Low Risk|Medium Risk|High Risk/i)?.[0] || 'Analyzing...';
   const riskColor = riskLevel.includes('Low') ? 'text-green-400' : riskLevel.includes('Medium') ? 'text-yellow-400' : 'text-red-400';

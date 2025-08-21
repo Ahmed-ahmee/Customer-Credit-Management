@@ -1,29 +1,27 @@
-
 import React, { useMemo } from 'react';
-import { type Customer, type Invoice, InvoiceStatus } from '../../types';
+import { type CustomerSummary, type AgeSummary } from '../../types';
 import Badge from '../shared/Badge';
 
 interface CustomerListProps {
-  customers: Customer[];
-  invoices: Invoice[];
-  onSelectCustomer: (customerId: string) => void;
+  customerSummaries: CustomerSummary[];
+  ageSummaries: AgeSummary[];
+  onSelectCustomer: (customerName: string) => void;
 }
 
-const CustomerList: React.FC<CustomerListProps> = ({ customers, invoices, onSelectCustomer }) => {
+const CustomerList: React.FC<CustomerListProps> = ({ customerSummaries, ageSummaries, onSelectCustomer }) => {
   const customerData = useMemo(() => {
-    return customers.map(customer => {
-      const customerInvoices = invoices.filter(inv => inv.customerId === customer.id);
-      const outstanding = customerInvoices
-        .filter(inv => inv.status !== InvoiceStatus.PAID)
-        .reduce((sum, inv) => sum + inv.netValue, 0);
+    return customerSummaries.map(customer => {
+      const customerAgeItems = ageSummaries.filter(item => item.customerName === customer.customerName);
       
-      const overdueCount = customerInvoices.filter(inv => inv.status === InvoiceStatus.OVERDUE).length;
+      const outstanding = customerAgeItems.reduce((sum, item) => sum + item.outstanding, 0);
+      
+      const overdueCount = customerAgeItems.filter(item => item.ageDays > 0 && item.outstanding > 0).length;
       
       let risk = 'Low';
-      if (overdueCount > 0 && outstanding > 50000) {
-        risk = 'High';
-      } else if (overdueCount > 0 || outstanding > 10000) {
-        risk = 'Medium';
+      if (customer.finalWeightedDays > 60 || (overdueCount > 2 && outstanding > 50000)) {
+          risk = 'High';
+      } else if (customer.finalWeightedDays > 30 || overdueCount > 0) {
+          risk = 'Medium';
       }
 
       return {
@@ -33,7 +31,7 @@ const CustomerList: React.FC<CustomerListProps> = ({ customers, invoices, onSele
         risk,
       };
     }).sort((a,b) => b.outstanding - a.outstanding);
-  }, [customers, invoices]);
+  }, [customerSummaries, ageSummaries]);
 
   return (
     <div className="space-y-6">
@@ -51,10 +49,9 @@ const CustomerList: React.FC<CustomerListProps> = ({ customers, invoices, onSele
           </thead>
           <tbody className="bg-gray-800 divide-y divide-gray-700">
             {customerData.map((customer) => (
-              <tr key={customer.id} className="hover:bg-gray-700/50 transition-colors">
+              <tr key={customer.customerName} className="hover:bg-gray-700/50 transition-colors">
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="text-sm font-medium text-white">{customer.name}</div>
-                  <div className="text-sm text-gray-400">{customer.email}</div>
+                  <div className="text-sm font-medium text-white">{customer.customerName}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-gray-300">${customer.outstanding.toLocaleString()}</td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-300">{customer.overdueCount}</td>
@@ -65,7 +62,7 @@ const CustomerList: React.FC<CustomerListProps> = ({ customers, invoices, onSele
                   />
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <button onClick={() => onSelectCustomer(customer.id)} className="text-blue-400 hover:text-blue-300">
+                  <button onClick={() => onSelectCustomer(customer.customerName)} className="text-blue-400 hover:text-blue-300">
                     View Details
                   </button>
                 </td>

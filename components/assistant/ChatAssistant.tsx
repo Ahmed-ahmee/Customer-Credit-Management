@@ -1,11 +1,11 @@
-
 import React, { useState, useRef, useEffect } from 'react';
-import { type Customer, type Invoice, type ChatMessage } from '../../types';
+import { type CustomerSummary, type InvoiceSummary, type AgeSummary, type ChatMessage } from '../../types';
 import { getChatResponse } from '../../services/geminiService';
 
 interface ChatAssistantProps {
-  customers: Customer[];
-  invoices: Invoice[];
+  customerSummaries: CustomerSummary[];
+  invoiceSummaries: InvoiceSummary[];
+  ageSummaries: AgeSummary[];
 }
 
 const LoadingDots = () => (
@@ -16,7 +16,7 @@ const LoadingDots = () => (
     </div>
 );
 
-const ChatAssistant: React.FC<ChatAssistantProps> = ({ customers, invoices }) => {
+const ChatAssistant: React.FC<ChatAssistantProps> = ({ customerSummaries, invoiceSummaries, ageSummaries }) => {
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'model', text: 'Hello! How can I help you with your debtor data today?' }
   ]);
@@ -39,7 +39,7 @@ const ChatAssistant: React.FC<ChatAssistantProps> = ({ customers, invoices }) =>
     setInput('');
     setIsLoading(true);
 
-    const responseText = await getChatResponse(newMessages, customers, invoices);
+    const responseText = await getChatResponse(newMessages, customerSummaries, invoiceSummaries, ageSummaries);
     const modelMessage: ChatMessage = { role: 'model', text: responseText };
     setMessages([...newMessages, modelMessage]);
     setIsLoading(false);

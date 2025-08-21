@@ -1,11 +1,9 @@
-
 import React, { useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { type Customer, type Invoice, InvoiceStatus } from '../../types';
+import { type AgeSummary } from '../../types';
 
 interface CustomersChartProps {
-    customers: Customer[];
-    invoices: Invoice[];
+    ageSummaries: AgeSummary[];
 }
 
 const COLORS = ['#3b82f6', '#8b5cf6', '#ec4899', '#f97316', '#10b981'];
@@ -23,19 +21,19 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     return null;
   };
 
-const CustomersChart: React.FC<CustomersChartProps> = ({ customers, invoices }) => {
+const CustomersChart: React.FC<CustomersChartProps> = ({ ageSummaries }) => {
     const chartData = useMemo(() => {
-        return customers.map(customer => {
-            const outstandingAmount = invoices
-                .filter(inv => inv.customerId === customer.id && (inv.status === InvoiceStatus.PENDING || inv.status === InvoiceStatus.OVERDUE))
-                .reduce((sum, inv) => sum + inv.netValue, 0);
-            return {
-                name: customer.name,
-                outstanding: outstandingAmount
-            };
-        }).filter(d => d.outstanding > 0)
+        const customerOutstandings = ageSummaries.reduce((acc, item) => {
+            if (item.outstanding > 0) {
+                acc[item.customerName] = (acc[item.customerName] || 0) + item.outstanding;
+            }
+            return acc;
+        }, {} as Record<string, number>);
+
+        return Object.entries(customerOutstandings)
+          .map(([name, outstanding]) => ({ name, outstanding }))
           .sort((a,b) => b.outstanding - a.outstanding);
-    }, [customers, invoices]);
+    }, [ageSummaries]);
 
     return (
         <div style={{ width: '100%', height: 300 }}>

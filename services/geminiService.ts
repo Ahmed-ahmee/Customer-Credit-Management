@@ -1,6 +1,5 @@
-
-import { GoogleGenAI, Type } from "@google/genai";
-import { type Customer, type Invoice, type EnrichedCustomer, type ChatMessage } from '../types';
+import { GoogleGenAI } from "@google/genai";
+import { type CustomerSummary, type InvoiceSummary, type AgeSummary, type EnrichedCustomerData, type ChatMessage } from '../types';
 
 const API_KEY = process.env.API_KEY;
 
@@ -23,48 +22,47 @@ const generateContent = async (prompt: string) => {
   }
 };
 
-export const generateCreditSuggestion = async (customer: EnrichedCustomer): Promise<string> => {
-  const today = new Date();
-  const outstandingInvoices = customer.invoices.filter(inv => inv.status !== 'Paid');
-  const totalOutstanding = outstandingInvoices.reduce((sum, inv) => sum + inv.netValue, 0);
-  const overdueInvoices = outstandingInvoices.filter(inv => inv.dueDate < today);
-  const avgPaymentDays = customer.invoices
-    .filter(inv => inv.status === 'Paid')
-    .map(inv => {
-      const payment = customer.payments.find(p => p.invoiceId === inv.id);
-      if (payment) {
-        const diffTime = Math.abs(payment.paymentDate.getTime() - inv.issueDate.getTime());
-        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      }
-      return 0;
-    })
-    .reduce((acc, days, index, arr) => acc + days / arr.length, 0);
+export const generateCreditSuggestion = async (customerData: EnrichedCustomerData): Promise<string> => {
+  const { summary, invoiceSummaries, ageSummaries } = customerData;
+  
+  const totalOutstanding = ageSummaries.reduce((sum, item) => sum + item.outstanding, 0);
+  const overdueSummaries = ageSummaries.filter(item => item.ageDays > 0 && item.outstanding > 0);
+  const totalOverdue = overdueSummaries.reduce((sum, item) => sum + item.outstanding, 0);
 
   const prompt = `
     Analyze the creditworthiness of the following customer based on their financial data.
     Provide a concise creditability suggestion (e.g., Low Risk, Medium Risk, High Risk) and a brief justification in bullet points.
 
-    Customer Name: ${customer.name}
-    Total Invoices: ${customer.invoices.length}
-    Total Outstanding Balance: $${totalOutstanding.toFixed(2)}
-    Number of Overdue Invoices: ${overdueInvoices.length}
-    Average Payment Time (for paid invoices): ${avgPaymentDays.toFixed(0)} days
+    Customer Name: ${summary.customerName}
+    
+    Key Metrics from Customer Summary:
+    - Weighted Average Collection Period: ${summary.weightedAverageCollection.toFixed(2)} days
+    - Final Weighted Days (risk indicator): ${summary.finalWeightedDays.toFixed(2)} days
 
-    Analysis:
+    Current Aging Status:
+    - Total Outstanding Balance: $${totalOutstanding.toFixed(2)}
+    - Total Overdue Balance: $${totalOverdue.toFixed(2)}
+    - Number of Overdue Invoices: ${overdueSummaries.length}
+
+    Recent Invoice Performance (sample of up to 5):
+    ${invoiceSummaries.slice(0, 5).map(inv => `- Invoice ${inv.invoiceNumber}: Net value $${inv.netInvoice}, Collection % ${inv.percentOfCollection}, BC Age Days ${inv.bcAgeDays}`).join('\n')}
+
+    Based on this data, provide your analysis:
   `;
 
   return generateContent(prompt);
 };
 
 
-export const getChatResponse = async (history: ChatMessage[], customers: Customer[], invoices: Invoice[]): Promise<string> => {
+export const getChatResponse = async (history: ChatMessage[], customerSummaries: CustomerSummary[], invoiceSummaries: InvoiceSummary[], ageSummaries: AgeSummary[]): Promise<string> => {
     const context = `
     You are an AI assistant for a debtor management application. Use the following data to answer the user's questions. 
     If you don't have the information, say so.
 
     DATA:
-    Customers: ${JSON.stringify(customers.map(c => ({id: c.id, name: c.name})))}
-    Invoices: ${JSON.stringify(invoices.map(i => ({...i, issueDate: i.issueDate.toISOString().split('T')[0], dueDate: i.dueDate.toISOString().split('T')[0]})))}
+    Customer Summaries: ${JSON.stringify(customerSummaries)}
+    Invoice Summaries: ${JSON.stringify(invoiceSummaries)}
+    Age Summaries: ${JSON.stringify(ageSummaries.map(a => ({...a, invoiceDate: a.invoiceDate.toISOString().split('T')[0]})))}
     ---
     Current Date: ${new Date().toISOString().split('T')[0]}
     ---
@@ -80,33 +78,31 @@ export const getChatResponse = async (history: ChatMessage[], customers: Custome
 };
 
 
-export const generateWeeklyFocus = async (customers: Customer[], invoices: Invoice[]): Promise<string> => {
-  const today = new Date();
-  const overdueInvoices = invoices.filter(inv => inv.status === 'Overdue' && inv.dueDate < today);
+export const generateWeeklyFocus = async (customerSummaries: CustomerSummary[], ageSummaries: AgeSummary[]): Promise<string> => {
+  const overdueItems = ageSummaries.filter(item => item.ageDays > 0 && item.outstanding > 0);
 
-  if (overdueInvoices.length === 0) {
+  if (overdueItems.length === 0) {
     return "Great news! There are no overdue invoices to focus on this week.";
   }
 
-  const overdueData = overdueInvoices.map(inv => {
-    const customer = customers.find(c => c.id === inv.customerId);
-    const daysOverdue = Math.floor((today.getTime() - inv.dueDate.getTime()) / (1000 * 60 * 60 * 24));
+  const overdueData = overdueItems.map(item => {
+    const customer = customerSummaries.find(c => c.customerName === item.customerName);
     return {
-      customerName: customer?.name || 'Unknown',
-      customerEmail: customer?.email || 'N/A',
-      invoiceNumber: inv.invoiceNumber,
-      amount: inv.netValue,
-      daysOverdue: daysOverdue,
+      customerName: item.customerName,
+      finalWeightedDays: customer?.finalWeightedDays || 'N/A',
+      invoiceNumber: item.invoiceNumber,
+      amount: item.outstanding,
+      daysOverdue: item.ageDays,
     };
   }).sort((a, b) => b.daysOverdue - a.daysOverdue);
 
   const prompt = `
-    Act as a senior collections manager. Based on the following list of overdue invoices, create a prioritized "Weekly Focus Report" for the collections team for this Monday morning.
+    Act as a senior collections manager. Based on the following list of overdue items, create a prioritized "Weekly Focus Report" for the collections team for this Monday morning.
     The report should be in markdown format. 
     It should start with a brief, motivating summary.
-    Then, list the top 3-5 priority customers to contact. For each customer, provide a concise summary including their name, total overdue amount, the most overdue invoice, and suggest a clear, actionable next step.
+    Then, list the top 3-5 priority customers to contact. For each customer, provide a concise summary including their name, total overdue amount, the most overdue invoice, and suggest a clear, actionable next step. Consider both the days overdue and the customer's "finalWeightedDays" as a risk indicator.
 
-    Overdue Invoices Data:
+    Overdue Items Data:
     ${JSON.stringify(overdueData)}
 
     Generate the report:
