@@ -1,10 +1,10 @@
-
 import React from 'react';
 import { Page } from '../../types';
 
 interface SidebarProps {
   currentPage: Page;
   setCurrentPage: (page: Page) => void;
+  isDataLoaded: boolean;
 }
 
 const ChartBarIcon = () => (
@@ -21,6 +21,9 @@ const SparklesIcon = () => (
 const CalendarIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
 );
+const DatabaseIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M12 5c-4.418 0-8 1.79-8 4" /></svg>
+);
 
 const NavItem: React.FC<{
   icon: React.ReactNode;
@@ -28,15 +31,18 @@ const NavItem: React.FC<{
   page: Page;
   currentPage: Page;
   setCurrentPage: (page: Page) => void;
-}> = ({ icon, label, page, currentPage, setCurrentPage }) => {
+  disabled?: boolean;
+}> = ({ icon, label, page, currentPage, setCurrentPage, disabled = false }) => {
   const isActive = currentPage === page;
   return (
     <li
-      onClick={() => setCurrentPage(page)}
-      className={`flex items-center p-3 my-2 rounded-lg cursor-pointer transition-all duration-200 ${
+      onClick={() => !disabled && setCurrentPage(page)}
+      className={`flex items-center p-3 my-2 rounded-lg transition-all duration-200 ${
         isActive
           ? 'bg-blue-600 text-white shadow-lg'
-          : 'text-gray-400 hover:bg-gray-700 hover:text-white'
+          : disabled
+          ? 'text-gray-600 cursor-not-allowed'
+          : 'text-gray-400 hover:bg-gray-700 hover:text-white cursor-pointer'
       }`}
     >
       {icon}
@@ -45,7 +51,7 @@ const NavItem: React.FC<{
   );
 };
 
-const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
+const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, isDataLoaded }) => {
   return (
     <aside className="w-64 bg-gray-900 border-r border-gray-700/50 p-6 flex flex-col">
       <div className="flex items-center mb-10">
@@ -58,10 +64,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
       </div>
       <nav>
         <ul>
-          <NavItem icon={<ChartBarIcon />} label="Dashboard" page={Page.DASHBOARD} currentPage={currentPage} setCurrentPage={setCurrentPage} />
-          <NavItem icon={<UsersIcon />} label="Customers" page={Page.CUSTOMERS} currentPage={currentPage} setCurrentPage={setCurrentPage} />
-          <NavItem icon={<CalendarIcon />} label="Weekly Focus" page={Page.WEEKLY_FOCUS} currentPage={currentPage} setCurrentPage={setCurrentPage} />
-          <NavItem icon={<SparklesIcon />} label="AI Assistant" page={Page.AI_ASSISTANT} currentPage={currentPage} setCurrentPage={setCurrentPage} />
+          <NavItem icon={<DatabaseIcon />} label="Data Hub" page={Page.DATA_HUB} currentPage={currentPage} setCurrentPage={setCurrentPage} />
+          <NavItem icon={<ChartBarIcon />} label="Dashboard" page={Page.DASHBOARD} currentPage={currentPage} setCurrentPage={setCurrentPage} disabled={!isDataLoaded} />
+          <NavItem icon={<UsersIcon />} label="Customers" page={Page.CUSTOMERS} currentPage={currentPage} setCurrentPage={setCurrentPage} disabled={!isDataLoaded} />
+          <NavItem icon={<CalendarIcon />} label="Weekly Focus" page={Page.WEEKLY_FOCUS} currentPage={currentPage} setCurrentPage={setCurrentPage} disabled={!isDataLoaded} />
+          <NavItem icon={<SparklesIcon />} label="AI Assistant" page={Page.AI_ASSISTANT} currentPage={currentPage} setCurrentPage={setCurrentPage} disabled={!isDataLoaded} />
         </ul>
       </nav>
       <div className="mt-auto p-4 bg-gray-800 rounded-lg text-center">
@@ -71,7 +78,8 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage }) => {
         </p>
         <button 
             onClick={() => setCurrentPage(Page.AI_ASSISTANT)}
-            className="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors">
+            disabled={!isDataLoaded}
+            className="mt-4 w-full bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition-colors disabled:bg-gray-500 disabled:cursor-not-allowed">
             Ask AI
         </button>
       </div>

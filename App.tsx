@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import Sidebar from './components/layout/Sidebar';
 import Dashboard from './components/dashboard/Dashboard';
@@ -6,16 +5,25 @@ import CustomerList from './components/customers/CustomerList';
 import CustomerDetail from './components/customers/CustomerDetail';
 import WeeklyFocus from './components/tasks/WeeklyFocus';
 import ChatAssistant from './components/assistant/ChatAssistant';
+import DataHub from './components/data/DataHub';
 import { type Customer, type Invoice, type Payment, Page } from './types';
-import { mockCustomers, mockInvoices, mockPayments } from './hooks/useMockData';
 
 const App: React.FC = () => {
-  const [currentPage, setCurrentPage] = useState<Page>(Page.DASHBOARD);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
+
+  const [currentPage, setCurrentPage] = useState<Page>(Page.DATA_HUB);
   const [selectedCustomerId, setSelectedCustomerId] = useState<string | null>(null);
 
-  const customers = mockCustomers;
-  const invoices = mockInvoices;
-  const payments = mockPayments;
+  const handleDataUpload = (data: { customers: Customer[]; invoices: Invoice[]; payments: Payment[] }) => {
+    setCustomers(data.customers);
+    setInvoices(data.invoices);
+    setPayments(data.payments);
+    setIsDataLoaded(true);
+    setCurrentPage(Page.DASHBOARD);
+  };
 
   const handleSelectCustomer = (customerId: string) => {
     setSelectedCustomerId(customerId);
@@ -23,7 +31,7 @@ const App: React.FC = () => {
   };
 
   const selectedCustomer = useMemo(() => {
-    if (!selectedCustomerId) return null;
+    if (!selectedCustomerId || !isDataLoaded) return null;
     const customer = customers.find(c => c.id === selectedCustomerId);
     if (!customer) return null;
 
@@ -32,10 +40,12 @@ const App: React.FC = () => {
     const customerPayments = payments.filter(p => invoiceIds.includes(p.invoiceId));
 
     return { ...customer, invoices: customerInvoices, payments: customerPayments };
-  }, [selectedCustomerId, customers, invoices, payments]);
+  }, [selectedCustomerId, customers, invoices, payments, isDataLoaded]);
 
   const renderContent = () => {
     switch (currentPage) {
+      case Page.DATA_HUB:
+        return <DataHub onDataUpload={handleDataUpload} />;
       case Page.DASHBOARD:
         return <Dashboard customers={customers} invoices={invoices} onSelectCustomer={handleSelectCustomer} />;
       case Page.CUSTOMERS:
@@ -47,13 +57,14 @@ const App: React.FC = () => {
       case Page.AI_ASSISTANT:
         return <ChatAssistant customers={customers} invoices={invoices} />;
       default:
-        return <Dashboard customers={customers} invoices={invoices} onSelectCustomer={handleSelectCustomer} />;
+        // Redirect to Data Hub if data isn't loaded
+        return isDataLoaded ? <Dashboard customers={customers} invoices={invoices} onSelectCustomer={handleSelectCustomer} /> : <DataHub onDataUpload={handleDataUpload} />;
     }
   };
 
   return (
     <div className="flex h-screen bg-gray-900 text-gray-200 font-sans">
-      <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} />
+      <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} isDataLoaded={isDataLoaded} />
       <main className="flex-1 overflow-y-auto p-8 bg-gray-800/50">
         {renderContent()}
       </main>
